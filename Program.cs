@@ -20,8 +20,9 @@ using System.Collections.Generic;
 using NDesk.Options;
 using Newtonsoft.Json;
 using iText.Kernel.XMP.Properties;
+using Newtonsoft.Json.Serialization;
 
-namespace itexttest
+namespace pdftool
 {
 
     public static class Globals
@@ -34,12 +35,13 @@ namespace itexttest
 
     class Command
     {
-        private void ShowHelp(OptionSet optset)
+        public static void ShowHelp(OptionSet optset)
         {
+            Console.WriteLine("Options:");
             optset.WriteOptionDescriptions(Console.Out);
         }
 
-        public void ParseParameters(string[] args, OptionSet optset)
+        public static void  ParseParameters(string[] args, OptionSet optset)
         {
             try
             {
@@ -60,16 +62,24 @@ namespace itexttest
 
         class Position
         {
+            [JsonProperty("pg")]
             public int? Pg { get; set; }
-            public int? X1 { get; set; }
-            public int? X2 { get; set; }
-            public int? Y1 { get; set; }
-            public int? Y2 { get; set; }
+            [JsonProperty("x1")]
+            public double? X1 { get; set; }
+            [JsonProperty("x2")]
+            public double? X2 { get; set; }
+            [JsonProperty("y1")]
+            public double? Y1 { get; set; }
+            [JsonProperty("y2")]
+            public double? Y2 { get; set; }
         }
         class Field
         {
+            [JsonProperty("id")]
             public string Id { get; set; }
+            [JsonProperty("value")]
             public string Value { get; set; }
+            [JsonProperty("positions")]
             public List<Position> Positions { get; set; }
 
             public Field()
@@ -81,9 +91,14 @@ namespace itexttest
 
         class Infos
         {
+            [JsonProperty("type")]
             public string Type { get; set; }
+            [JsonProperty("fields")]
             public List<Field> Fields { get; set; }
+            [JsonProperty("author")]
             public string Author { get; set; }
+            [JsonProperty("when")]
+            public string When { get; set; }
 
             public Infos()
             {
@@ -95,12 +110,17 @@ namespace itexttest
 
         public void Get(string[] args)
         {
-            string srcFilePath = "";
+            string srcFilePath = null;
             var p = new OptionSet() {
                 { "i|input=", "input file path",
                    v => srcFilePath = v }
             };
             ParseParameters(args, p);
+            if (srcFilePath == null)
+            {
+                ShowHelp(p);
+                return;
+            }
 
 
             PdfReader reader = new PdfReader(srcFilePath);
@@ -109,7 +129,9 @@ namespace itexttest
             XMPMeta m1 = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
             Infos infos = new Infos
             {
-                Type = m1.GetProperty(GM_NAMEPACE, "DocInfos/gm:type").ToString()
+                Type = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:type"),
+                When = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:when"),
+                Author = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:author")
             };
 
 
@@ -119,8 +141,6 @@ namespace itexttest
                 {
                     Id = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:id"),
                     Value = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:value"),
-
-
                 };
 
                 for (int j = 1; j < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos") + 1; j++)
@@ -128,31 +148,26 @@ namespace itexttest
                     Position position = new Position
                     {
                         Pg = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:pg"),
-                        X1 = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x1"),
-                        X2 = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x2"),
-                        Y1 = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y1"),
-                        Y2 = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y2"),
+                        X1 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x1"),
+                        X2 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x2"),
+                        Y1 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y1"),
+                        Y2 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y2"),
                     };
                     field.Positions.Add(position);
                 }
 
                 infos.Fields.Add(field);
-
-
             }
 
-
-
             Console.WriteLine(JsonConvert.SerializeObject(infos, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
-
 
         }
 
 
         public void Set(string[] args)
         {
-            string srcFilePath = "";
-            string infosJSON = "";
+            string srcFilePath = null;
+            string infosJSON = null;
             var p = new OptionSet() {
                 { "i|input=", "file path",
                    v => srcFilePath = v },
@@ -161,6 +176,11 @@ namespace itexttest
             };
 
             ParseParameters(args, p);
+            if( srcFilePath == null || infosJSON == null)
+            {
+                ShowHelp(p);
+                return;
+            }
 
             //{"type": "/doc/type/subtype", "fields": [{"id":"field id","value":"keyword value","positions":[{"pg":1,"x1":1,"x2":2,"y1":10,"y2":20}, {"pg":1,"x1":2,"x2":3,"y1":30,"y2":50}]}]}
 
@@ -183,6 +203,7 @@ namespace itexttest
                 string keywords = "type:" + docInfos.Type;
                 m1.DeleteProperty(GM_NAMEPACE, "DocInfos");
                 m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:type", docInfos.Type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
                 foreach (var field in docInfos.Fields)
                 {
@@ -206,6 +227,8 @@ namespace itexttest
                 m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
                 if (Globals.USERNAME.Length > 0)
                 {
+                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:author", Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+
                     m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:parameters", "by " + Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                 }
 
@@ -243,7 +266,7 @@ namespace itexttest
 
         public void Split(string[] args)
         {
-            string srcFilePath = "";
+            string srcFilePath = null;
 
             var p = new OptionSet() {
                 { "i|input=", "input file path",
@@ -251,6 +274,11 @@ namespace itexttest
             };
 
             ParseParameters(args, p);
+            if( srcFilePath == null )
+            {
+                ShowHelp(p);
+                return;
+            }
 
             using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
             {
@@ -266,7 +294,7 @@ namespace itexttest
 
         public void Extract(string[] args)
         {
-            string srcFilePath = "";
+            string srcFilePath = null;
             string range = null;
 
 
@@ -277,8 +305,12 @@ namespace itexttest
                   v => range =v}
             };
 
-
             ParseParameters(args, p);
+            if (srcFilePath == null || range == null)
+            {
+                ShowHelp(p);
+                return;
+            }
 
             using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
             {
@@ -291,9 +323,8 @@ namespace itexttest
 
         public void Merge(string[] args)
         {
-            Console.WriteLine(args);
             List<string> srcFilesPath = new List<string>();
-            string destFilePath = "";
+            string destFilePath = null;
             var p = new OptionSet() {
                 { "i|input=", "input file path",
                    v => srcFilesPath.Add(v) },
@@ -302,6 +333,11 @@ namespace itexttest
             };
 
             ParseParameters(args, p);
+            if ( srcFilesPath.Count == 0 || destFilePath == null)
+            {
+                ShowHelp(p);
+                return;
+            }
 
             PdfDocument pdfDoc = new PdfDocument(new PdfWriter(destFilePath));
             PdfMerger merger = new PdfMerger(pdfDoc);
@@ -320,17 +356,10 @@ namespace itexttest
 
     }
 
-    class MainClass
+    class MainClass: Command
     {
 
 
-        static void ShowHelp(OptionSet p)
-        {
-            Console.WriteLine("Usage: itext-test [OPTIONS]+");
-            Console.WriteLine();
-            Console.WriteLine("Options:");
-            p.WriteOptionDescriptions(Console.Out);
-        }
 
 
         public static void Main(string[] args)
@@ -338,7 +367,7 @@ namespace itexttest
             string action = "";
 
             var p = new OptionSet() {
-                { "a|action=", "action to perform",
+                { "a|action=", "action to perform [set-infos|get-infos|split|merge|extract]",
                    v => action = v.ToLower() },
                 { "u|username=", "user performing the action",
                    v => Globals.USERNAME = v },
@@ -348,16 +377,7 @@ namespace itexttest
                    v => action = "help" },
             };
 
-            try
-            {
-                p.Parse(args);
-            }
-            catch (OptionException)
-            {
-                ShowHelp(p);
-                return;
-            }
-
+            ParseParameters(args, p);
 
             switch (action)
             {
