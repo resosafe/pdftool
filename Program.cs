@@ -21,6 +21,7 @@ using NDesk.Options;
 using Newtonsoft.Json;
 using iText.Kernel.XMP.Properties;
 using Newtonsoft.Json.Serialization;
+using System.Reflection;
 
 namespace pdftool
 {
@@ -37,6 +38,7 @@ namespace pdftool
     {
         public static void ShowHelp(OptionSet optset)
         {
+            Console.WriteLine(Assembly.GetExecutingAssembly().GetName().Name+" "+Assembly.GetExecutingAssembly().GetName().Version);
             Console.WriteLine("Options:");
             optset.WriteOptionDescriptions(Console.Out);
         }
