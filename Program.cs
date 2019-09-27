@@ -95,6 +95,8 @@ namespace pdftool
         {
             [JsonProperty("type")]
             public string Type { get; set; }
+            [JsonProperty("tags")]
+            public List<string> Tags { get; set; }
             [JsonProperty("fields")]
             public List<Field> Fields { get; set; }
             [JsonProperty("author")]
@@ -105,6 +107,7 @@ namespace pdftool
             public Infos()
             {
                 Fields = new List<Field>();
+                Tags = new List<string>();
             }
 
         }
@@ -171,6 +174,11 @@ namespace pdftool
                     Author = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:author")
                 };
 
+                for (int i = 1; i < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Tags") + 1; i++)
+                {
+                    infos.Tags.Add(m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Tags[" + (i) + "]"));
+                }
+
 
                 for (int i = 1; i < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields") + 1; i++)
                 {
@@ -202,9 +210,6 @@ namespace pdftool
             {
 
             }
-
-
-
 
         }
 
@@ -256,6 +261,7 @@ namespace pdftool
         }
 
 
+
         public void SetIndexation(string[] args)
         {
             string srcFilePath = null;
@@ -292,29 +298,47 @@ namespace pdftool
                 XMPSchemaRegistry registry = XMPMetaFactory.GetSchemaRegistry();
                 registry.RegisterNamespace(GM_NAMEPACE, "gm");
 
-                string keywords = "type:" + docInfos.Type;
-                m1.DeleteProperty(GM_NAMEPACE, "DocInfos");
-                m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:type", docInfos.Type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                string keywords = "";
+                if ( docInfos.Type.Length > 0)
+                {
+                    keywords+= "type: " + docInfos.Type;
+                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:type", docInfos.Type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                }
+            
                 m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
-                foreach (var field in docInfos.Fields)
-                {
-                    keywords += "," + field.Id + ":" + field.Value;
-                    m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
-                    foreach (var pos in field.Positions)
+                if (docInfos.Tags.Count > 0)
+                {
+                    m1.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Tags");
+                    foreach (var tag in docInfos.Tags)
                     {
-                        m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        keywords += ",tag:" + tag;
+                        m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Tags", new PropertyOptions(PropertyOptions.ARRAY), tag, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                     }
                 }
+    
+                if (docInfos.Fields.Count > 0)
+                {
+                    m1.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Fields");
+                    foreach (var field in docInfos.Fields)
+                    {
+                        keywords += "," + field.Id + ":" + field.Value;
+                        m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
+                        foreach (var pos in field.Positions)
+                        {
+                            m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        }
+                    }
+                }
                 m1.AppendArrayItem(XMPConst.NS_XMP_MM, "History", new PropertyOptions(PropertyOptions.ARRAY_ORDERED), null, new PropertyOptions(PropertyOptions.STRUCT));
                 m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
                 m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
@@ -343,27 +367,38 @@ namespace pdftool
         private class CustomSplitter : PdfSplitter
         {
             private int count;
-            private readonly string destinationPath;
+            private readonly string destinationFullBasePath;
 
-            public CustomSplitter(PdfDocument pdfDocument, string destination) : base(pdfDocument)
+            public CustomSplitter(PdfDocument pdfDocument, string destinationDirectory, string baseFilename) : base(pdfDocument)
             {
-                destinationPath = destination;
+
+                if (!Directory.Exists(destinationDirectory))
+                {
+                    DirectoryInfo di = Directory.CreateDirectory(destinationDirectory);
+                }
+
+                destinationFullBasePath = destinationDirectory+"/"+baseFilename;
                 count = 1;
             }
 
             protected override PdfWriter GetNextPdfWriter(PageRange documentPageRange)
             {
-                return new PdfWriter(destinationPath + count++ + ".pdf");
+                return new PdfWriter(destinationFullBasePath + (count++).ToString().PadLeft(4, '0') + ".pdf");
             }
         }
 
         public void Split(string[] args)
         {
             string srcFilePath = null;
-
+            int pagesCount = 1;
+            string outputDirectory = null;
             var p = new OptionSet() {
                 { "i|input=", "input file path",
-                   v => srcFilePath = v }
+                   v => srcFilePath = v },
+                { "o|output=", "output directory",
+                   v => outputDirectory = v },
+                { "c|count=", "page count in each split",
+                   v => pagesCount = Int32.Parse(v) }
             };
 
             ParseParameters(args, p);
@@ -373,15 +408,29 @@ namespace pdftool
                 return;
             }
 
+            if ( outputDirectory == null )
+            {
+                outputDirectory = System.IO.Path.GetDirectoryName(srcFilePath);
+            }
+
             using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
             {
-                CustomSplitter splitter = new CustomSplitter(pdfDoc, System.IO.Path.ChangeExtension(srcFilePath, null) + "-split-");
-                IList<PdfDocument> splittedDocs = splitter.SplitByPageCount(1);
-
-                foreach (PdfDocument splittedDoc in splittedDocs)
+                try
                 {
-                    splittedDoc.Close();
+                    CustomSplitter splitter = new CustomSplitter(pdfDoc, outputDirectory, System.IO.Path.GetFileNameWithoutExtension(srcFilePath) + "-split-");
+                    IList<PdfDocument> splittedDocs = splitter.SplitByPageCount(pagesCount);
+
+                    foreach (PdfDocument splittedDoc in splittedDocs)
+                    {
+                        splittedDoc.Close();
+                    }
                 }
+                catch (Exception e)
+                {
+                    Console.WriteLine("The process failed: {0}", e.ToString());
+                }
+
+
             }
         }
 
@@ -389,11 +438,13 @@ namespace pdftool
         {
             string srcFilePath = null;
             string range = null;
-
+            string outputDirectory = null;
 
             var p = new OptionSet() {
                 { "i|input=", "file path",
                    v => srcFilePath = v },
+                { "o|output=", "output directory",
+                   v => outputDirectory = v },
                 { "n|numbers=", "pages to extract",
                   v => range =v}
             };
@@ -405,9 +456,14 @@ namespace pdftool
                 return;
             }
 
+            if (outputDirectory == null)
+            {
+                outputDirectory = System.IO.Path.GetDirectoryName(srcFilePath);
+            }
+
             using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
             {
-                CustomSplitter splitter = new CustomSplitter(pdfDoc, System.IO.Path.ChangeExtension(srcFilePath, null) + "-extract-");
+                CustomSplitter splitter = new CustomSplitter(pdfDoc, outputDirectory, System.IO.Path.GetFileNameWithoutExtension(srcFilePath) + "-extract-");
                 splitter.ExtractPageRange(new PageRange(range)).Close();
             }
 
