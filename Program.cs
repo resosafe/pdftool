@@ -108,6 +108,7 @@ namespace pdftool
             {
                 Fields = new List<Field>();
                 Tags = new List<string>();
+                Type = "";
             }
 
         }
@@ -161,7 +162,7 @@ namespace pdftool
             PdfReader reader = new PdfReader(srcFilePath);
             PdfDocument pdfDoc = new PdfDocument(reader);
             Document doc = new Document(pdfDoc);
-            XMPMeta m1 = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
+            XMPMeta xmpmeta = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
 
             try
             {
@@ -169,34 +170,34 @@ namespace pdftool
 
                 Infos infos = new Infos
                 {
-                    Type = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:type"),
-                    When = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:when"),
-                    Author = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:author")
+                    Type = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:type"),
+                    When = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:when"),
+                    Author = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:author")
                 };
 
-                for (int i = 1; i < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Tags") + 1; i++)
+                for (int i = 1; i < xmpmeta.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Tags") + 1; i++)
                 {
-                    infos.Tags.Add(m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Tags[" + (i) + "]"));
+                    infos.Tags.Add(xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Tags[" + (i) + "]"));
                 }
 
 
-                for (int i = 1; i < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields") + 1; i++)
+                for (int i = 1; i < xmpmeta.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields") + 1; i++)
                 {
                     Field field = new Field
                     {
-                        Id = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:id"),
-                        Value = m1.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:value"),
+                        Id = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:id"),
+                        Value = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:value"),
                     };
 
-                    for (int j = 1; j < m1.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos") + 1; j++)
+                    for (int j = 1; j < xmpmeta.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos") + 1; j++)
                     {
                         Position position = new Position
                         {
-                            Pg = m1.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:pg"),
-                            X1 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x1"),
-                            X2 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x2"),
-                            Y1 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y1"),
-                            Y2 = m1.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y2"),
+                            Pg = xmpmeta.GetPropertyInteger(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:pg"),
+                            X1 = xmpmeta.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x1"),
+                            X2 = xmpmeta.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:x2"),
+                            Y1 = xmpmeta.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y1"),
+                            Y2 = xmpmeta.GetPropertyDouble(GM_NAMEPACE, "DocInfos/gm:Fields[" + (i) + "]/gm:pos[" + (j) + "]/gm:y2"),
                         };
                         field.Positions.Add(position);
                     }
@@ -230,23 +231,23 @@ namespace pdftool
             PdfReader reader = new PdfReader(srcFilePath);
             PdfDocument pdfDoc = new PdfDocument(reader);
             Document doc = new Document(pdfDoc);
-            XMPMeta m1 = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
+            XMPMeta xmpmeta = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
 
             History history = new History();
 
             try
             {
-                for (int i = 1; i < m1.CountArrayItems(XMPConst.NS_XMP_MM, "History") + 1; i++)
+                for (int i = 1; i < xmpmeta.CountArrayItems(XMPConst.NS_XMP_MM, "History") + 1; i++)
                 {
                     HistoryEvent hevent=new HistoryEvent();
                     history.Events.Add(hevent);
 
-                    try { hevent.Action = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:action"); } catch { }
-                    try { hevent.Changed = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:changed"); } catch { }
-                    try { hevent.InstanceID = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:instanceID"); } catch { }
-                    try { hevent.SoftwareAgent = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:softwareAgent"); } catch { }
-                    try { hevent.Parameters = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:parameters"); } catch { }
-                    try { hevent.When = m1.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:when"); } catch { }
+                    try { hevent.Action = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:action"); } catch { }
+                    try { hevent.Changed = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:changed"); } catch { }
+                    try { hevent.InstanceID = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:instanceID"); } catch { }
+                    try { hevent.SoftwareAgent = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:softwareAgent"); } catch { }
+                    try { hevent.Parameters = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:parameters"); } catch { }
+                    try { hevent.When = xmpmeta.GetPropertyString(XMPConst.NS_XMP_MM, "History[" + (i) + "]/stEvt:when"); } catch { }
                                        
                 }
 
@@ -293,64 +294,57 @@ namespace pdftool
                 PdfWriter writer = new PdfWriter(destFilePath);
 
                 PdfDocument pdfDoc = new PdfDocument(reader, writer);
-
-                XMPMeta m1 = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
+                XMPMeta xmpmeta = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
                 XMPSchemaRegistry registry = XMPMetaFactory.GetSchemaRegistry();
                 registry.RegisterNamespace(GM_NAMEPACE, "gm");
 
                 string keywords = "";
+
+                xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:type");
                 if ( docInfos.Type.Length > 0)
                 {
                     keywords+= "type: " + docInfos.Type;
-                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:type", docInfos.Type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                    xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:type", docInfos.Type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                 }
-            
-                m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
-
-                if (docInfos.Tags.Count > 0)
+                xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Tags");
+                foreach (var tag in docInfos.Tags)
                 {
-                    m1.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Tags");
-                    foreach (var tag in docInfos.Tags)
+                    keywords += ",tag:" + tag;
+                    xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Tags", new PropertyOptions(PropertyOptions.ARRAY), tag, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                }
+                xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Fields");
+                foreach (var field in docInfos.Fields)
+                {
+                    keywords += "," + field.Id + ":" + field.Value;
+                    xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                    xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                    xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+
+                    foreach (var pos in field.Positions)
                     {
-                        keywords += ",tag:" + tag;
-                        m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Tags", new PropertyOptions(PropertyOptions.ARRAY), tag, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                     }
                 }
-    
-                if (docInfos.Fields.Count > 0)
-                {
-                    m1.DeleteProperty(GM_NAMEPACE, "DocInfos/gm:Fields");
-                    foreach (var field in docInfos.Fields)
-                    {
-                        keywords += "," + field.Id + ":" + field.Value;
-                        m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
-                        foreach (var pos in field.Positions)
-                        {
-                            m1.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:pos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        }
-                    }
-                }
-                m1.AppendArrayItem(XMPConst.NS_XMP_MM, "History", new PropertyOptions(PropertyOptions.ARRAY_ORDERED), null, new PropertyOptions(PropertyOptions.STRUCT));
-                m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                xmpmeta.AppendArrayItem(XMPConst.NS_XMP_MM, "History", new PropertyOptions(PropertyOptions.ARRAY_ORDERED), null, new PropertyOptions(PropertyOptions.STRUCT));
+                xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
                 if (Globals.USERNAME.Length > 0)
                 {
-                    m1.SetProperty(GM_NAMEPACE, "DocInfos/gm:author", Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                    m1.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:parameters", "by " + Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                    xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:author", Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                    xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:parameters", "by " + Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                 }
 
                 pdfDoc.GetDocumentInfo().SetKeywords(keywords);
-                pdfDoc.SetXmpMetadata(m1);
+                pdfDoc.SetXmpMetadata(xmpmeta);
                 pdfDoc.Close();
 
                 File.Delete(srcFilePath);
@@ -585,11 +579,11 @@ namespace pdftool
                 byte[] xmpbytes = pdfDoc.GetXmpMetadata(true);
                 Console.Write(System.Text.Encoding.UTF8.GetString(xmpbytes));
 
-                XMPMeta m1 = XMPMetaFactory.ParseFromBuffer(xmpbytes);
-                //m1.set
-                //            m1.InsertArrayItem("xmpMM", "CustTags", 0, "valuetest");
+                XMPMeta xmpmeta = XMPMetaFactory.ParseFromBuffer(xmpbytes);
+                //xmpmeta.set
+                //            xmpmeta.InsertArrayItem("xmpMM", "CustTags", 0, "valuetest");
 
-                m1.AppendArrayItem(XMPConst.NS_XMP_MM, "Tags", new PropertyOptions(PropertyOptions.ARRAY), "valuetest2", new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                xmpmeta.AppendArrayItem(XMPConst.NS_XMP_MM, "Tags", new PropertyOptions(PropertyOptions.ARRAY), "valuetest2", new PropertyOptions(PropertyOptions.NO_OPTIONS));
 
                 /*
                 PdfDictionary catalog = pdfDoc.GetTrailer();
@@ -598,10 +592,10 @@ namespace pdftool
                 map.Put(new PdfName("test1"), new PdfString("test1"));
                 */
 
-                //String xmp = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description xmlns:xmpMM=\"http://ns.adobe.com/xap/1.0/mm/\" rdf:about=\"\"><xmpMM:CustTags><rdf:Seq><rdf:li>elem1</rdf:li></rdf:Seq></xmpMM:CustTags></rdf:Description></rdf:RDF>";
+                //String xmp = "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description xmlns:xmpMM=\"http://ns.adobe.com/xap/1.0/mm/\" rdf:about=\"\"><xmpMM:CustTags><rdf:Seq><rdf:li>elexmpmeta</rdf:li></rdf:Seq></xmpMM:CustTags></rdf:Description></rdf:RDF>";
 
                 //XMPMeta m=XMPMetaFactory.ParseFromString(xmp,new ParseOptions().SetAcceptLatin1(true).SetRequireXMPMeta(false).SetStrictAliasing(false).SetOmitNormalization(true).SetFixControlChars(false));
-                pdfDoc.SetXmpMetadata(m1);
+                pdfDoc.SetXmpMetadata(xmpmeta);
 
                 /*
                 XMPMeta xMPMeta = new XMPMeta;
