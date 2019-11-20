@@ -23,6 +23,7 @@ using iText.Kernel.XMP.Properties;
 using Newtonsoft.Json.Serialization;
 using System.Reflection;
 using System.Xml;
+using iText.Kernel;
 
 namespace pdftool
 {
@@ -98,8 +99,8 @@ namespace pdftool
             public List<string> Types { get; set; }
             [JsonProperty("indexationDate")]
             public string IndexationDate { get; set; }
-            [JsonProperty("status")]
-            public string Status { get; set; }
+            [JsonProperty("indexationStatus")]
+            public string IndexationStatus { get; set; }
             [JsonProperty("tags")]
             public List<string> Tags { get; set; }
             [JsonProperty("fields")]
@@ -150,7 +151,7 @@ namespace pdftool
 
 
 
-        public void Get(string[] args)
+        public int Get(string[] args)
         {
             string srcFilePath = null;
             string key =null;
@@ -164,7 +165,7 @@ namespace pdftool
             if (srcFilePath == null || key == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
             try
@@ -183,14 +184,19 @@ namespace pdftool
 
                     default:
                         ShowHelp(p);
-                        return;
+                        return 1;
 
                 }
-            } catch { }
+            } 
+            catch 
+            {
+                return 1;
+            }
+            return 0;
 
         }
 
-        public void GetIndexation(string[] args)
+        public int GetIndexation(string[] args)
         {
             string srcFilePath = null;
             var p = new OptionSet() {
@@ -201,9 +207,10 @@ namespace pdftool
             if (srcFilePath == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
-
+            XMPSchemaRegistry registry = XMPMetaFactory.GetSchemaRegistry();
+            registry.RegisterNamespace(GM_NAMEPACE, "gm");
 
             PdfReader reader = new PdfReader(srcFilePath);
             PdfDocument pdfDoc = new PdfDocument(reader);
@@ -223,16 +230,14 @@ namespace pdftool
                 Infos infos = new Infos
                 {
                     IndexationDate = xmpmeta.GetPropertyString(GM_NAMEPACE, "IndexationDate"),
-                    Status = xmpmeta.GetPropertyString(GM_NAMEPACE, "IndexationStatus"),
+                    IndexationStatus = xmpmeta.GetPropertyString(GM_NAMEPACE, "IndexationStatus"),
                     When = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:when"),
                     Author = xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:author")
                 };
-
                 for (int i = 1; i < xmpmeta.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Types") + 1; i++)
                 {
                     infos.Types.Add(xmpmeta.GetPropertyString(GM_NAMEPACE, "DocInfos/gm:Types[" + (i) + "]"));
                 }
-                infos.Status=xmpmeta.GetPropertyString(GM_NAMEPACE, "IndexationStatus");
 
                 for (int i = 1; i < xmpmeta.CountArrayItems(GM_NAMEPACE, "DocInfos/gm:Tags") + 1; i++)
                 {
@@ -268,14 +273,15 @@ namespace pdftool
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    "Une autre exception a eu lieu : {0}.",
-                    ex.Message);
+                Console.WriteLine("Exception : {0}.", ex.Message);
+                return 1;
             }
+
+            return 0;
 
         }
 
-        public void GetHistory(string[] args)
+        public int GetHistory(string[] args)
         {
             string srcFilePath = null;
             var p = new OptionSet() {
@@ -286,7 +292,7 @@ namespace pdftool
             if (srcFilePath == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
             PdfReader reader = new PdfReader(srcFilePath);
@@ -316,17 +322,20 @@ namespace pdftool
 
                 Console.WriteLine(JsonConvert.SerializeObject(history, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
 
-            } catch 
+            }
+            catch (Exception ex)
             {
+                Console.WriteLine("Exception : {0}.", ex.Message);
+                return 1;
             }
 
-
+            return 0;
 
         }
 
 
 
-        public void SetIndexation(string[] args)
+        public int SetIndexation(string[] args)
         {
             string srcFilePath = null;
             string infosJSON = null;
@@ -341,110 +350,137 @@ namespace pdftool
             if( srcFilePath == null || infosJSON == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
-            Infos docInfos = JsonConvert.DeserializeObject<Infos>(infosJSON);
-
-            /*
-            Dictionary<string, object> json = JsonConvert.DeserializeObject<Dictionary<string, object>>(infosJSON);
-
-            foreach (KeyValuePair<string, object> entry in json)
+            try
             {
-                // do something with entry.Value or entry.Key
-                Console.WriteLine(entry.Key);
-                Console.WriteLine(entry.Value.GetType().ToString());
-                if ( entry.Value.GetType().IsN)
+
+                Infos docInfos = JsonConvert.DeserializeObject<Infos>(infosJSON);
+
+                /*
+                Dictionary<string, object> json = JsonConvert.DeserializeObject<Dictionary<string, object>>(infosJSON);
+
+                foreach (KeyValuePair<string, object> entry in json)
                 {
-                    Console.WriteLine("got array");
-                }
-            }
-            */
-
-            string destFilePath = srcFilePath + ".tmp";
-
-            using (var file = new FileStream(srcFilePath, FileMode.Open, FileAccess.Read, FileShare.None))
-            {
-                PdfReader reader = new PdfReader(file);
-                PdfWriter writer = new PdfWriter(destFilePath);
-
-                PdfDocument pdfDoc = new PdfDocument(reader, writer);
-                byte[] buffer = pdfDoc.GetXmpMetadata(true);
-
-                XMPSchemaRegistry registry = XMPMetaFactory.GetSchemaRegistry();
-                registry.RegisterNamespace(GM_NAMEPACE, "gm");
-
-                XMPMeta xmpmeta;
-                try
-                {
-                    xmpmeta = XMPMetaFactory.ParseFromBuffer(buffer);
-                } catch (Exception)
-                {
-                    xmpmeta = XMPMetaFactory.Create();
-                }
-
-                if ( docInfos.Status!=null )
-                {
-                    xmpmeta.SetProperty(GM_NAMEPACE, "IndexationStatus", docInfos.Status);
-                }
-
-                if (docInfos.Types.Count > 0)
-                {
-                    xmpmeta.SetProperty(GM_NAMEPACE, "IndexationDate", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
-
-                    xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos");
-
-                    foreach (var type in docInfos.Types)
+                    // do something with entry.Value or entry.Key
+                    Console.WriteLine(entry.Key);
+                    Console.WriteLine(entry.Value.GetType().ToString());
+                    if ( entry.Value.GetType().IsN)
                     {
-                        xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Types", new PropertyOptions(PropertyOptions.ARRAY), type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        Console.WriteLine("got array");
+                    }
+                }
+                */
+
+                string destFilePath = srcFilePath + ".tmp";
+
+                using (var file = new FileStream(srcFilePath, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    PdfReader reader = new PdfReader(file);
+                    PdfWriter writer = new PdfWriter(destFilePath);
+
+                    PdfDocument pdfDoc = new PdfDocument(reader, writer);
+                    byte[] buffer = pdfDoc.GetXmpMetadata(true);
+
+                    XMPSchemaRegistry registry = XMPMetaFactory.GetSchemaRegistry();
+                    registry.RegisterNamespace(GM_NAMEPACE, "gm");
+
+                    XMPMeta xmpmeta;
+                    try
+                    {
+                        xmpmeta = XMPMetaFactory.ParseFromBuffer(buffer);
+                    }
+                    catch (Exception)
+                    {
+                        xmpmeta = XMPMetaFactory.Create();
                     }
 
-                    /*  foreach (var status in docInfos.Status)
-                      {
-                          xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Status", new PropertyOptions(PropertyOptions.ARRAY), status, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                      }
-                      */
-                    foreach (var tag in docInfos.Tags)
+                    bool storeInfos = true;
+
+                    if (docInfos.IndexationStatus != null)
                     {
-                        xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Tags", new PropertyOptions(PropertyOptions.ARRAY), tag, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                    }
 
+                        string[] validStatus = { "", "complete", "partial", "excluded" };
 
-                    foreach (var field in docInfos.Fields)
-                    {
-                        xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc", null, new PropertyOptions(PropertyOptions.STRUCT | PropertyOptions.SEPARATE_NODE));
-                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                        xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-
-                        foreach (var pos in field.Positions)
+                        if (Array.IndexOf(validStatus, docInfos.IndexationStatus) != -1)
                         {
-                            xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
-                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            xmpmeta.SetProperty(GM_NAMEPACE, "IndexationStatus", docInfos.IndexationStatus);
+                            if (docInfos.IndexationStatus == "excluded")
+                            {
+                                xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos");
+                                storeInfos = false;
+                            }
+                        }
+                    }
+
+                    if (storeInfos && docInfos.Types.Count > 0)
+                    {
+                        xmpmeta.SetProperty(GM_NAMEPACE, "IndexationDate", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+
+                        xmpmeta.DeleteProperty(GM_NAMEPACE, "DocInfos");
+
+                        foreach (var type in docInfos.Types)
+                        {
+                            xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Types", new PropertyOptions(PropertyOptions.ARRAY), type, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        }
+
+                        /*  foreach (var status in docInfos.Status)
+                          {
+                              xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Status", new PropertyOptions(PropertyOptions.ARRAY), status, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                          }
+                          */
+                        foreach (var tag in docInfos.Tags)
+                        {
+                            xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Tags", new PropertyOptions(PropertyOptions.ARRAY), tag, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        }
+
+
+                        foreach (var field in docInfos.Fields)
+                        {
+                            xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc", null, new PropertyOptions(PropertyOptions.STRUCT | PropertyOptions.SEPARATE_NODE));
+                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc/gm:id", field.Id, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldDesc/gm:value", field.Value, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+
+                            foreach (var pos in field.Positions)
+                            {
+                                xmpmeta.AppendArrayItem(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos", new PropertyOptions(PropertyOptions.ARRAY), null, new PropertyOptions(PropertyOptions.STRUCT));
+                                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:pg", pos.Pg, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:x1", pos.X1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:x2", pos.X2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:y1", pos.Y1, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                                xmpmeta.SetProperty(GM_NAMEPACE, "DocInfos/gm:Fields[last()]/gm:FieldPos[last()]/gm:y2", pos.Y2, new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                            }
+
+                        }
+
+                        xmpmeta.AppendArrayItem(XMPConst.NS_XMP_MM, "History", new PropertyOptions(PropertyOptions.ARRAY_ORDERED), null, new PropertyOptions(PropertyOptions.STRUCT));
+                        xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                        xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
+
+                        if (Globals.USERNAME.Length > 0)
+                        {
+                            xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:parameters", "by " + Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
                         }
 
                     }
 
-                    xmpmeta.AppendArrayItem(XMPConst.NS_XMP_MM, "History", new PropertyOptions(PropertyOptions.ARRAY_ORDERED), null, new PropertyOptions(PropertyOptions.STRUCT));
-                    xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:action", "indexed", new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                    xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:when", DateTime.Now.ToString(), new PropertyOptions(PropertyOptions.NO_OPTIONS));
+                    pdfDoc.SetXmpMetadata(xmpmeta);
 
-                    if (Globals.USERNAME.Length > 0)
-                    {
-                        xmpmeta.SetProperty(XMPConst.NS_XMP_MM, "History[last()]/stEvt:parameters", "by " + Globals.USERNAME, new PropertyOptions(PropertyOptions.NO_OPTIONS));
-                    }
+                    pdfDoc.Close();
+
+                    File.Delete(srcFilePath);
+                    File.Move(destFilePath, srcFilePath);
                 }
-
-                pdfDoc.SetXmpMetadata(xmpmeta);
-                pdfDoc.Close();
-
-                File.Delete(srcFilePath);
-                File.Move(destFilePath, srcFilePath);
             }
+            catch (PdfException ex)
+            {
+                Console.WriteLine("Exception : {0}", ex.Message);
+                return 1;
+            }
+            return 0;
+
         }
     }
 
@@ -476,7 +512,7 @@ namespace pdftool
             }
         }
 
-        public void Split(string[] args)
+        public int Split(string[] args)
         {
             string srcFilePath = null;
             int pagesCount = 1;
@@ -494,7 +530,7 @@ namespace pdftool
             if( srcFilePath == null )
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
             if ( outputDirectory == null )
@@ -517,13 +553,13 @@ namespace pdftool
                 catch (Exception e)
                 {
                     Console.WriteLine("The process failed: {0}", e.ToString());
+                    return 1;
                 }
-
-
             }
+            return 0;
         }
 
-        public void Extract(string[] args)
+        public int Extract(string[] args)
         {
             string srcFilePath = null;
             string range = null;
@@ -542,24 +578,33 @@ namespace pdftool
             if (srcFilePath == null || range == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
-            if (outputDirectory == null)
-            {
-                outputDirectory = System.IO.Path.GetDirectoryName(srcFilePath);
-            }
+            try { 
 
-            using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
-            {
-                CustomSplitter splitter = new CustomSplitter(pdfDoc, outputDirectory, System.IO.Path.GetFileNameWithoutExtension(srcFilePath) + "-extract-");
-                splitter.ExtractPageRange(new PageRange(range)).Close();
+                if (outputDirectory == null)
+                {
+                    outputDirectory = System.IO.Path.GetDirectoryName(srcFilePath);
+                }
+
+                using (PdfDocument pdfDoc = new PdfDocument(new PdfReader(srcFilePath)))
+                {
+                    CustomSplitter splitter = new CustomSplitter(pdfDoc, outputDirectory, System.IO.Path.GetFileNameWithoutExtension(srcFilePath) + "-extract-");
+                    splitter.ExtractPageRange(new PageRange(range)).Close();
+                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine("The process failed: {0}", e.ToString());
+                return 1;
+            }
+            return 0;
 
         }
 
 
-        public void Merge(string[] args)
+        public int Merge(string[] args)
         {
             List<string> srcFilesPath = new List<string>();
             string destFilePath = null;
@@ -574,21 +619,31 @@ namespace pdftool
             if ( srcFilesPath.Count == 0 || destFilePath == null)
             {
                 ShowHelp(p);
-                return;
+                return 1;
             }
 
-            PdfDocument pdfDoc = new PdfDocument(new PdfWriter(destFilePath));
-            PdfMerger merger = new PdfMerger(pdfDoc);
-
-            foreach (string src in srcFilesPath)
+            try
             {
-                Console.WriteLine(src);
-                PdfDocument srcPdfDoc = new PdfDocument(new PdfReader(src));
-                merger.Merge(srcPdfDoc, 1, srcPdfDoc.GetNumberOfPages());
-                srcPdfDoc.Close();
+                PdfDocument pdfDoc = new PdfDocument(new PdfWriter(destFilePath));
+                PdfMerger merger = new PdfMerger(pdfDoc);
+
+                foreach (string src in srcFilesPath)
+                {
+                    Console.WriteLine(src);
+                    PdfDocument srcPdfDoc = new PdfDocument(new PdfReader(src));
+                    merger.Merge(srcPdfDoc, 1, srcPdfDoc.GetNumberOfPages());
+                    srcPdfDoc.Close();
+                }
+
+                pdfDoc.Close();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("The process failed: {0}", e.ToString());
+                return 1;
             }
 
-            pdfDoc.Close();
+            return 0;
 
         }
 
@@ -600,7 +655,7 @@ namespace pdftool
 
 
 
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
             string action = "";
 
@@ -616,35 +671,36 @@ namespace pdftool
             };
 
             ParseParameters(args, p);
-
+            int ret = 0;
             switch (action)
             {
                 case "get-info":
-                    new DocInfos().Get(args);
+                    ret = new DocInfos().Get(args);
                     break;
                 case "set-indexation":
-                    new DocInfos().SetIndexation(args);
+                    ret = new DocInfos().SetIndexation(args);
                     break;
                 case "get-indexation":
-                    new DocInfos().GetIndexation(args);
+                    ret = new DocInfos().GetIndexation(args);
                     break;
                 case "get-history":
-                    new DocInfos().GetHistory(args);
+                    ret = new DocInfos().GetHistory(args);
                     break;
                 case "split":
-                    new DocumentManipulation().Split(args);
+                    ret = new DocumentManipulation().Split(args);
                     break;
                 case "merge":
-                    new DocumentManipulation().Merge(args);
+                    ret = new DocumentManipulation().Merge(args);
                     break;
                 case "extract":
-                    new DocumentManipulation().Extract(args);
+                    ret = new DocumentManipulation().Extract(args);
                     break;
                 default:
                     ShowHelp(p);
-                    return;
+                    break;
 
             }
+            return ret;
         }
     }
 }
