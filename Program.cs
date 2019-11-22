@@ -220,13 +220,6 @@ namespace pdftool
             {
                 XMPMeta xmpmeta = XMPMetaFactory.ParseFromBuffer(pdfDoc.GetXmpMetadata(true));
 
-                /*XmlDocument xml = new XmlDocument();
-                Console.WriteLine(pdfDoc.GetXmpMetadata(true).ToString());
-                xml.LoadXml(System.Text.Encoding.UTF8.GetString(pdfDoc.GetXmpMetadata(true)));
-                string jsonText = JsonConvert.SerializeXmlNode(xml);
-                Console.WriteLine(jsonText.ToString());*/
-
-
                 Infos infos = new Infos
                 {
                     IndexationDate = xmpmeta.GetPropertyString(GM_NAMEPACE, "IndexationDate"),
@@ -357,21 +350,6 @@ namespace pdftool
             {
 
                 Infos docInfos = JsonConvert.DeserializeObject<Infos>(infosJSON);
-
-                /*
-                Dictionary<string, object> json = JsonConvert.DeserializeObject<Dictionary<string, object>>(infosJSON);
-
-                foreach (KeyValuePair<string, object> entry in json)
-                {
-                    // do something with entry.Value or entry.Key
-                    Console.WriteLine(entry.Key);
-                    Console.WriteLine(entry.Value.GetType().ToString());
-                    if ( entry.Value.GetType().IsN)
-                    {
-                        Console.WriteLine("got array");
-                    }
-                }
-                */
 
                 string destFilePath = srcFilePath + ".tmp";
 
@@ -651,9 +629,6 @@ namespace pdftool
 
     class MainClass: Command
     {
-
-
-
 
         public static int Main(string[] args)
         {
