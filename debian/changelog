@@ -1,0 +1,17 @@
+pdftool (1.1-1) unstable; urgency=medium
+
+  * update from upstream version 
+
+ -- Christian Marchand <cmarchand@resosafe.fr>  Mon, 25 Nov 2019 09:55:06 +0100
+
+pdftool (1.0.7261.19235-2) unstable; urgency=medium
+
+  * Fix corrupted pdftool binary 
+
+ -- Christian Marchand <cmarchand@resosafe.fr>  Tue, 19 Nov 2019 07:53:44 +0100
+
+pdftool (1.0.7261.19235-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Christian Marchand <cmarchand@resosafe.fr>  Mon, 18 Nov 2019 11:29:25 +0100
